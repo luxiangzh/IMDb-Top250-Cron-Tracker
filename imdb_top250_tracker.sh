@@ -1,27 +1,33 @@
 #!/bin/bash
 
+# Change directory to the location of the script
+cd "$(dirname "$0")"
+
 # Set variables
 url="https://www.imdb.com/chart/top"
 previous_ranking="imdb_top250_previous.txt"
 current_ranking="imdb_top250_current.txt"
 
 # Get IMDb Top 250 page
-curl -s $url > imdb_top250.html
+curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36" $url > imdb_top250.html
 
-# Extract movie names and release years
-grep -zoP '<td class="titleColumn">.*?\n\s*\d+\.\n\s*<a[^>]*>([^<]+)<\/a>.*?\n\s*<span class="secondaryInfo">\(([0-9]{4})\)<\/span>.*?\n\s*<\/td>' imdb_top250.html | \
-# Remove all HTML tags
-sed -rz 's/<[^>]*>//g' | \
-# Remove leading and trailing spaces, and delete the line containing the serial number
-sed 's/^ *//;s/ *$//; /^[[:space:]]*[0-9]\+\.[[:space:]]*/d' | \
-# Combine the movie title, release year, and blank line into one line
-awk '!(NR%3){print prev, $0; next} {prev=$0}' > $current_ranking
+# Extract all titles
+grep -o '<h3 class="ipc-title__text">[^<]*' imdb_top250.html |  \
+# Remove HTML tages
+awk -F'>' '{print $2}' | \
+# Maintain titles starting with a serial number
+awk '/^[0-9]/' | \
+# Remove serial numbers
+sed 's/^[0-9]*\. //' > $current_ranking
+
+# [TODO] Match all content from title to year
+# grep -oE '<h3 class="ipc-title__text">.*?>[0-9]{4}<' imdb_top250.html > $current_ranking
 
 # Sort the new file
 sort $current_ranking -o $current_ranking
 
 # Print the extracted movie names and release years
-# echo "Extracted movie names and release years:"
+# echo "Extracted content:"
 # cat $current_ranking
 # echo
 
